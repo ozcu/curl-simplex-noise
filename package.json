@@ -2,7 +2,7 @@
   "name": "boilerplate",
   "version": "1.0.0",
   "description": "threejs boilerplate",
-  "default": "src/index.html",
+  "default": "index.js",
   "scripts": {
     "dev": "parcel src/index.html",
     "build":"parcel build src/index.html",
