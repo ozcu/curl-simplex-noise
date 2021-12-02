@@ -2,13 +2,12 @@ import './styles/main.css'
 
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { mergeBufferGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import boilerVertexShader from './shaders/vertex.glsl'
 import boilerFragmentShader from './shaders/fragment.glsl'
 import { CatmullRomCurve3 } from 'three'
 import GUI from 'lil-gui'
-
-
 
 
 /**Simplex Noise Curl ***/
@@ -113,8 +112,7 @@ controls.enableDamping = true
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
-console.log(renderer.info)
-
+//console.log(renderer.info)
 
 
 //Gui
@@ -123,9 +121,11 @@ gui.close()
 
 
 const settings = {
-    progress:1.0,
-    scale:1.0,
-    vectorScale:0.1,
+    lengthOfCurve:50,
+    numberOfCurve:400,
+    noiseScale:0.5,
+    noiseLengthScale:0.1,
+
 }
 
 
@@ -160,38 +160,19 @@ let curve = null
 
 
 const generateCurve = ()=>{
-    
  
     if(scene.children.length !== null){
         for( let i = scene.children.length - 1; i >= 0; i--) { 
             
             let obj = scene.children[i];
             if(obj instanceof THREE.Mesh){
+                obj.geometry.dispose()
+                obj.material.dispose()
                 scene.remove(obj); 
             }
             
         }
     }    
-
-    
-   /*  scene.traverse((child)=>{
-            //Check if there is a mesh
-            if(child instanceof THREE.Mesh){
-                console.log(child.geometry)
-                child.geometry.dispose()
-                //Loop through the material properties
-                for(const key in child.material){
-                    const value = child.material[key]
-                    //Test if there is a dispose function
-                    if(value && typeof value.dispose ==='function'){
-                        console.log(child.material)
-                        value.dispose()
-                    }
-                }
-                console.log(child)
-                scene.remove(child)
-            }
-        }) */
     
 
     //Tube Methods
@@ -202,43 +183,59 @@ const generateCurve = ()=>{
         points.push(start)
         let currentPoint = start.clone()
 
-        for(let i = 0 ; i<500;i++){
+        for(let i = 0 ; i<settings.lengthOfCurve;i++){
 
-            v = curlNoise(currentPoint.x,currentPoint.y,currentPoint.z)
+            v = curlNoise(currentPoint.x/settings.noiseScale,currentPoint.y/settings.noiseScale,currentPoint.z/settings.noiseScale)
             
-            currentPoint.addScaledVector(v,settings.vectorScale)
+            currentPoint.addScaledVector(v,settings.noiseLengthScale)
             //console.log(currentPoint,v)
             points.push(currentPoint.clone())
            
         }
         return points
     }
-
-    for(let i =0; i<500;i++){
+    const geometries = []
+    for(let i =0; i<settings.numberOfCurve;i++){
         path = new CatmullRomCurve3(
             getCurve(new THREE.Vector3(Math.sin(i),Math.cos(i),0))
             
         )
         
-        geometry = new THREE.TubeGeometry( path, 80, 0.001, 8, false )
+        geometry = new THREE.TubeGeometry( path, settings.numberOfCurve, 0.001, 8, false )
         
-        curve = new THREE.Mesh(geometry,shaderMaterial)
         
-        scene.add(curve)
+        
+       // scene.add(curve)
+       geometries.push(geometry)
 
     }
-
+    const mergedGeometry = mergeBufferGeometries(geometries)
+    curve = new THREE.Mesh(mergedGeometry,shaderMaterial)
+    scene.add(curve) 
 
 }
 
 generateCurve()
 
 
-
-
 //Gui init
-gui.add(settings,'progress',0,1,0.01)
-gui.add(settings,'scale',0,10,1).onFinishChange(generateCurve())
+gui.add(settings,'numberOfCurve',200,600,50).onFinishChange(()=>{
+    generateCurve()
+
+})
+gui.add(settings,'lengthOfCurve',50,600,1).onFinishChange(()=>{
+    generateCurve()
+
+})
+gui.add(settings,'noiseScale',0.01,2.0,0.1).onFinishChange(()=>{
+    generateCurve()
+
+})
+gui.add(settings,'noiseLengthScale',0.01,0.5,0.01).onFinishChange(()=>{
+    generateCurve()
+
+})
+
 
 /**
  * Animate
@@ -251,13 +248,6 @@ const animateScene = () =>
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - lastElapsedTime
     lastElapsedTime = elapsedTime
-    /*
-    console.log(elapsedTime)
-
-     if(elapsedTime > 4.0 && elapsedTime <4.05){
-        console.log('fired')
-       generateCurve()
-    } */
     
     //Update shader with time
     shaderMaterial.uniforms.uTime.value = elapsedTime
