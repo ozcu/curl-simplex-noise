@@ -5,9 +5,21 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 import boilerVertexShader from './shaders/vertex.glsl'
 import boilerFragmentShader from './shaders/fragment.glsl'
-import { CatmullRomCurve3, Color, Vector3 } from 'three'
+import { CatmullRomCurve3 } from 'three'
+import GUI from 'lil-gui'
 
 
+
+//Gui
+const gui = new GUI()
+gui.close()
+
+
+const settings = {
+    progress:1.0,
+    scale:1.0,
+
+}
 
 
 /**Simplex Noise Curl ***/
@@ -93,8 +105,8 @@ window.addEventListener('resize', () =>
 // Base camera
 const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 100)
 camera.position.x = 0
-camera.position.y = 1
-camera.position.z = 1
+camera.position.y = 5
+camera.position.z = 5
 scene.add(camera)
 
 // Controls
@@ -125,15 +137,15 @@ shaderMaterial= new THREE.ShaderMaterial({
 
 
 //Tube Methods
-function getCurve(start){
+let getCurve = (start)=>{
     points = []
     
     points.push(start)
     let currentPoint = start.clone()
 
-    for(let i = 0 ; i<600;i++){
+    for(let i = 0 ; i<500;i++){
 
-        let v = curlNoise(currentPoint.x,currentPoint.y,currentPoint.z)
+        let v = curlNoise(currentPoint.x/settings.scale,currentPoint.y/settings.scale,currentPoint.z/settings.scale)
         
         currentPoint.addScaledVector(v,0.01)
         //console.log(currentPoint,v)
@@ -143,13 +155,13 @@ function getCurve(start){
     return points
 }
 
-for(let i =0; i<500;i++){
+for(let i =0; i<400;i++){
     let path = new CatmullRomCurve3(
         getCurve(new THREE.Vector3(i/100,0,0))
         
         )
     
-    let geometry = new THREE.TubeGeometry( path, 600, 0.001, 8, false )
+    let geometry = new THREE.TubeGeometry( path, 500, 0.001, 8, false )
     
     let curve = new THREE.Mesh(geometry,shaderMaterial)
     
@@ -169,6 +181,12 @@ const renderer = new THREE.WebGLRenderer({
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+
+
+//Gui init
+gui.add(settings,'progress',0,1,0.01)
+gui.add(settings,'scale',0,10,0.01)
 
 /**
  * Animate
