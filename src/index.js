@@ -10,17 +10,6 @@ import GUI from 'lil-gui'
 
 
 
-//Gui
-const gui = new GUI()
-gui.close()
-
-
-const settings = {
-    progress:1.0,
-    scale:1.0,
-
-}
-
 
 /**Simplex Noise Curl ***/
 
@@ -32,7 +21,7 @@ function curlNoise (x, y, z, curl = new THREE.Vector3()) {
   const eps = 1.0;
   let n1, n2, a, b;
 
-    //Find the rate of change in YZ plane
+  //Find the rate of change in YZ plane
   n1 = simplex.noise3D(x, y + eps, z);
   n2 = simplex.noise3D(x, y - eps, z);
   a = (n1 - n2) / (2 * eps);
@@ -113,6 +102,34 @@ scene.add(camera)
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
 
+
+/**
+ * Renderer
+ */
+ const renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
+    antialias: true,
+})
+renderer.setSize(sizes.width, sizes.height)
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+
+console.log(renderer.info)
+
+
+
+//Gui
+const gui = new GUI()
+gui.close()
+
+
+const settings = {
+    progress:1.0,
+    scale:1.0,
+    vectorScale:0.1,
+}
+
+
+
 /**
  * Tube
  */
@@ -134,59 +151,94 @@ shaderMaterial= new THREE.ShaderMaterial({
 })
 
 
+let points = null
+let v = null
+let path = null
+let geometry = null
+let curve = null
 
 
-//Tube Methods
-let getCurve = (start)=>{
-    let points = []
+
+const generateCurve = ()=>{
     
-    points.push(start)
-    let currentPoint = start.clone()
+ 
+    if(scene.children.length !== null){
+        for( let i = scene.children.length - 1; i >= 0; i--) { 
+            
+            let obj = scene.children[i];
+            if(obj instanceof THREE.Mesh){
+                scene.remove(obj); 
+            }
+            
+        }
+    }    
 
-    for(let i = 0 ; i<500;i++){
+    
+   /*  scene.traverse((child)=>{
+            //Check if there is a mesh
+            if(child instanceof THREE.Mesh){
+                console.log(child.geometry)
+                child.geometry.dispose()
+                //Loop through the material properties
+                for(const key in child.material){
+                    const value = child.material[key]
+                    //Test if there is a dispose function
+                    if(value && typeof value.dispose ==='function'){
+                        console.log(child.material)
+                        value.dispose()
+                    }
+                }
+                console.log(child)
+                scene.remove(child)
+            }
+        }) */
+    
 
-        let v = curlNoise(currentPoint.x/settings.scale,currentPoint.y/settings.scale,currentPoint.z/settings.scale)
+    //Tube Methods
+    let getCurve = (start)=>{
+
+        points = []
         
-        currentPoint.addScaledVector(v,0.01)
-        //console.log(currentPoint,v)
-        points.push(currentPoint.clone())
+        points.push(start)
+        let currentPoint = start.clone()
+
+        for(let i = 0 ; i<500;i++){
+
+            v = curlNoise(currentPoint.x,currentPoint.y,currentPoint.z)
+            
+            currentPoint.addScaledVector(v,settings.vectorScale)
+            //console.log(currentPoint,v)
+            points.push(currentPoint.clone())
+           
+        }
+        return points
+    }
+
+    for(let i =0; i<500;i++){
+        path = new CatmullRomCurve3(
+            getCurve(new THREE.Vector3(Math.sin(i),Math.cos(i),0))
+            
+        )
+        
+        geometry = new THREE.TubeGeometry( path, 80, 0.001, 8, false )
+        
+        curve = new THREE.Mesh(geometry,shaderMaterial)
+        
+        scene.add(curve)
 
     }
-    return points
-}
 
-for(let i =0; i<400;i++){
-    let path = new CatmullRomCurve3(
-        getCurve(new THREE.Vector3(i/100,0,0))
-        
-        )
-    
-    let geometry = new THREE.TubeGeometry( path, 500, 0.001, 8, false )
-    
-    let curve = new THREE.Mesh(geometry,shaderMaterial)
-    
-    scene.add(curve)
 
 }
 
+generateCurve()
 
-
-
-/**
- * Renderer
- */
-const renderer = new THREE.WebGLRenderer({
-    canvas: canvas,
-    antialias: true,
-})
-renderer.setSize(sizes.width, sizes.height)
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 
 
 //Gui init
 gui.add(settings,'progress',0,1,0.01)
-gui.add(settings,'scale',0,10,0.01)
+gui.add(settings,'scale',0,10,1).onFinishChange(generateCurve())
 
 /**
  * Animate
@@ -199,7 +251,14 @@ const animateScene = () =>
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - lastElapsedTime
     lastElapsedTime = elapsedTime
+    /*
+    console.log(elapsedTime)
 
+     if(elapsedTime > 4.0 && elapsedTime <4.05){
+        console.log('fired')
+       generateCurve()
+    } */
+    
     //Update shader with time
     shaderMaterial.uniforms.uTime.value = elapsedTime
 
