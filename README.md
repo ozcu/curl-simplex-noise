@@ -1,6 +1,6 @@
-# threejs-simple-boilerplate
+# Simplex-3D Curl Noise
 
-Simple threejs parcel boilerplate for scenes.
+demo ->
 
 
 ## Setup
