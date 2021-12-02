@@ -10,7 +10,10 @@ void main(){
     vUv = uv;
     vPosition = position;
 
-    vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+   // vPosition.x = vPosition.x +sin(vPosition.x *uTime *0.5);
+    //vPosition.y = vPosition.y +cos(vPosition.y *uTime *0.5);
+
+    vec4 modelPosition = modelMatrix * vec4(vPosition, 1.0);
 
     gl_Position = projectionMatrix * viewMatrix * modelPosition ;
 
