@@ -5,6 +5,53 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 import boilerVertexShader from './shaders/vertex.glsl'
 import boilerFragmentShader from './shaders/fragment.glsl'
+import { CatmullRomCurve3, Color, Vector3 } from 'three'
+
+
+
+
+/**Simplex Noise Curl ***/
+
+import SimplexNoise from 'simplex-noise';
+const simplex = new SimplexNoise();
+
+module.exports = curlNoise;
+function curlNoise (x, y, z, curl = new THREE.Vector3()) {
+  const eps = 1.0;
+  let n1, n2, a, b;
+
+    //Find the rate of change in YZ plane
+  n1 = simplex.noise3D(x, y + eps, z);
+  n2 = simplex.noise3D(x, y - eps, z);
+  a = (n1 - n2) / (2 * eps);
+  n1 = simplex.noise3D(x, y, z + eps);
+  n2 = simplex.noise3D(x, y, z - eps);
+  b = (n1 - n2) / (2 * eps);
+
+  curl.x = a - b;
+ 
+  //Find the rate of change in XZ plane
+  n1 = simplex.noise3D(x, y, z + eps);
+  n2 = simplex.noise3D(x, y, z - eps);
+  a = (n1 - n2)/(2 * eps);
+  n1 = simplex.noise3D(x + eps, y, z);
+  n2 = simplex.noise3D(x + eps, y, z);
+  b = (n1 - n2)/(2 * eps);
+
+  curl.y = a - b;
+
+  //Find the rate of change in XY plane
+  n1 = simplex.noise3D(x + eps, y, z);
+  n2 = simplex.noise3D(x - eps, y, z);
+  a = (n1 - n2)/(2 * eps);
+  n1 = simplex.noise3D(x, y + eps, z);
+  n2 = simplex.noise3D(x, y - eps, z);
+  b = (n1 - n2)/(2 * eps);
+
+  curl.z = a - b;
+
+  return curl;
+};
 
 
 /**
@@ -15,6 +62,7 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
+scene.background = new THREE.Color(1.0,1.0,1.0)
 
 /**
  * Sizes
@@ -46,7 +94,7 @@ window.addEventListener('resize', () =>
 const camera = new THREE.PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 100)
 camera.position.x = 0
 camera.position.y = 1
-camera.position.z = 3
+camera.position.z = 1
 scene.add(camera)
 
 // Controls
@@ -54,10 +102,10 @@ const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
 
 /**
- * plane
+ * Tube
  */
 
-const planeGeometry = new THREE.PlaneGeometry(1,1,1,1)
+
 
 let shaderMaterial = null
 
@@ -73,9 +121,44 @@ shaderMaterial= new THREE.ShaderMaterial({
 
 })
 
-const plane = new THREE.Mesh(planeGeometry,shaderMaterial)
 
-scene.add(plane)
+
+
+//Tube Methods
+function getCurve(start){
+    points = []
+    
+    points.push(start)
+    let currentPoint = start.clone()
+
+    for(let i = 0 ; i<600;i++){
+
+        let v = curlNoise(currentPoint.x,currentPoint.y,currentPoint.z)
+        
+        currentPoint.addScaledVector(v,0.01)
+        //console.log(currentPoint,v)
+        points.push(currentPoint.clone())
+
+    }
+    return points
+}
+
+for(let i =0; i<500;i++){
+    let path = new CatmullRomCurve3(
+        getCurve(new THREE.Vector3(i/100,0,0))
+        
+        )
+    
+    let geometry = new THREE.TubeGeometry( path, 600, 0.001, 8, false )
+    
+    let curve = new THREE.Mesh(geometry,shaderMaterial)
+    
+    scene.add(curve)
+
+}
+
+
+
 
 /**
  * Renderer
