@@ -138,7 +138,7 @@ shaderMaterial= new THREE.ShaderMaterial({
 
 //Tube Methods
 let getCurve = (start)=>{
-    points = []
+    let points = []
     
     points.push(start)
     let currentPoint = start.clone()
